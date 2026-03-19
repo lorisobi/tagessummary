@@ -156,7 +156,7 @@ export default async function handler(req: any, res: any) {
     }
 
     return res.status(200).json({ 
-        message: 'VERSION 2.0 - News Summarizer Running!',
+        message: 'VERSION 2.1 - News Summarizer Running!',
         results, 
         debugLogs 
     });
