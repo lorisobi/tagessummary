@@ -1,0 +1,21 @@
+{
+  "name": "tagesschau-cron",
+  "version": "1.0.0",
+  "description": "Tagesschau YouTube Summarizer",
+  "main": "api/cron.ts",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.2",
+    "@supabase/supabase-js": "^2.39.8",
+    "rss-parser": "^3.13.0",
+    "youtube-transcript": "^1.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3",
+    "@vercel/node": "^3.0.0"
+  }
+}
