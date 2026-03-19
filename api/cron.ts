@@ -1,29 +1,12 @@
-import { GoogleGenerativeAI, Part } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 // @ts-ignore
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createClient } from '@supabase/supabase-js';
-import Parser from 'rss-parser';
-import ytdl from '@distube/ytdl-core';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const YOUTUBE_PLAYLIST_ID = 'PL4A2F331EE86DCC22';
-const YOUTUBE_RSS_URL = `https://www.youtube.com/feeds/videos.xml?playlist_id=${YOUTUBE_PLAYLIST_ID}`;
 const TAGESSCHAU_API_URL = 'https://www.tagesschau.de/api2u/channels';
-
-// Helfer-Funktion: YouTube Audio herunterladen
-async function downloadYouTubeAudio(videoId: string): Promise<string> {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const tmpPath = path.join(os.tmpdir(), `yt_${videoId}.m4a`);
-    return new Promise((resolve, reject) => {
-        const stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
-        const writeStream = fs.createWriteStream(tmpPath);
-        stream.pipe(writeStream);
-        writeStream.on('finish', () => resolve(tmpPath));
-        stream.on('error', reject);
-    });
-}
 
 // Helfer-Funktion: Direkte Datei (MP4) herunterladen
 async function downloadDirectMedia(url: string, id: string): Promise<string> {
@@ -51,30 +34,13 @@ export default async function handler(req: any, res: any) {
 
     const itemsToProcess: any[] = [];
 
-    // --- 1. Fetch YouTube ---
-    try {
-        const parser = new Parser();
-        const feed = await parser.parseURL(YOUTUBE_RSS_URL);
-        if (feed.items && feed.items.length > 0) {
-            // Nehmen wir das aktuellste YouTube Video
-            const video = feed.items[0];
-            itemsToProcess.push({
-                id: video.id.replace('yt:video:', ''),
-                title: video.title,
-                pubDate: video.pubDate || new Date().toISOString(),
-                source: 'youtube',
-                type: 'audio/mp4'
-            });
-        }
-    } catch (e) {
-        console.error('YouTube RSS fetch failed', e);
-    }
-
-    // --- 2. Fetch Tagesschau API (100 Sekunden) ---
+    // --- Fetch Tagesschau API (100 Sekunden) ---
     try {
         const tsRes = await fetch(TAGESSCHAU_API_URL);
         const tsData = await tsRes.json();
         const channels = tsData.channels || [];
+        
+        // Wir nehmen die "Tagesschau in 100 Sekunden"
         const item100s = channels.find((c: any) => c.program === 'tagesschau_in_100_Sekunden');
         
         if (item100s && item100s.streams && item100s.streams.h264s) {
@@ -102,7 +68,7 @@ export default async function handler(req: any, res: any) {
         .maybeSingle();
 
       if (existingData) {
-        results.push({ id: item.id, status: 'skipped' });
+        results.push({ id: item.id, status: 'skipped', reason: 'already processed' });
         continue;
       }
 
@@ -111,11 +77,7 @@ export default async function handler(req: any, res: any) {
       
       try {
         // Download
-        if (item.source === 'youtube') {
-            tmpPath = await downloadYouTubeAudio(item.id);
-        } else {
-            tmpPath = await downloadDirectMedia(item.url, item.id);
-        }
+        tmpPath = await downloadDirectMedia(item.url, item.id);
 
         // Upload to Gemini
         uploadResponse = await fileManager.uploadFile(tmpPath, {

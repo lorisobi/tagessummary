@@ -8,10 +8,8 @@
     "dev": "vercel dev"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
-    "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "^2.39.8",
-    "rss-parser": "^3.13.0"
+    "@google/generative-ai": "^0.2.0",
+    "@supabase/supabase-js": "^2.39.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
