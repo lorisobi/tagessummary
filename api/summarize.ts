@@ -42,10 +42,14 @@ export default async function handler(req: any, res: any) {
         const channels = tsData.channels || [];
         debugLogs.push(`Found ${channels.length} channels.`);
         
-        // Wir suchen die Sendung "Tagesschau in 100 Sekunden" über den Titel oder das Tracking
+        // Log all titles for debugging
+        channels.forEach((c: any, i: number) => {
+            debugLogs.push(`Channel ${i}: "${c.title}" (ID: ${c.sophoraId})`);
+        });
+
+        // Wir suchen den ersten Channel, der kein Livestream ist (identifizierbar an h264-Streams)
         const item100s = channels.find((c: any) => 
-            c.title?.toLowerCase().includes('100 sekunden') || 
-            c.tracking?.some((t: any) => t.program === 'tagesschau_in_100_Sekunden')
+            c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl)
         );
         
         if (item100s) {
@@ -56,7 +60,7 @@ export default async function handler(req: any, res: any) {
                     title: 'Tagesschau in 100 Sekunden',
                     pubDate: item100s.date || new Date().toISOString(),
                     source: 'tagesschau_api',
-                    url: item100s.streams.h264s,
+                    url: item100s.streams.h264s || item100s.streams.h264m || item100s.streams.h264xl,
                     type: 'video/mp4'
                 });
             } else {
