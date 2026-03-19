@@ -104,7 +104,7 @@ export default async function handler(req: any, res: any) {
         });
 
         // Summarize
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); 
         const prompt = `Fasse diesen Nachrichtenbeitrag ("${item.title}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten.`;
         
         const response = await model.generateContent([
