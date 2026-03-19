@@ -1,10 +1,10 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 // Initialize clients
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -50,12 +50,9 @@ export default async function handler(req: any, res: any) {
     // 4. Summarize with Gemini
     const prompt = `Fasse die folgenden Nachrichten der Tagesschau prägnant und übersichtlich in Stichpunkten zusammen. Markiere die wichtigsten Themen klar:\n\n${fullTranscript}`;
     
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
-    
-    const summary = response.text;
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const summary = result.response.text();
 
     // 5. Store in Supabase
     const { error: insertError } = await supabase
