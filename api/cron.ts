@@ -1,10 +1,46 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
-import { YoutubeTranscript } from 'youtube-transcript';
 
 const TAGESSCHAU_PLAYLIST_ID = 'PL4A2F331EE86DCC22';
 const RSS_FEED_URL = `https://www.youtube.com/feeds/videos.xml?playlist_id=${TAGESSCHAU_PLAYLIST_ID}`;
+
+// Native Transcript Fetcher to avoid ESM package errors on Vercel
+async function fetchTranscript(videoId: string): Promise<string> {
+  const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+  const html = await response.text();
+  
+  // Extract the internal YouTube JSON object from the page HTML
+  const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*(?:var\s+(?:meta|head)|<\/script|\n)/);
+  if (!playerResponseMatch) throw new Error('Player response not found on YouTube page');
+  
+  const playerResponse = JSON.parse(playerResponseMatch[1]);
+  const tracks = playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  
+  if (!tracks || tracks.length === 0) throw new Error('No transcripts available for this video');
+  
+  // Try to find German captions, otherwise take the first available
+  let track = tracks.find((t: any) => t.languageCode === 'de');
+  if (!track) track = tracks[0];
+
+  const transcriptResponse = await fetch(track.baseUrl);
+  const xml = await transcriptResponse.text();
+
+  // Extract all <text>...</text> tags from the XML using Regex
+  const textLines = [];
+  const regex = /<text[^>]*>([^<]+)<\/text>/g;
+  let match;
+  while ((match = regex.exec(xml)) !== null) {
+      // Decode basic HTML entities and add to lines
+      const decodedText = match[1]
+          .replace(/&amp;/g, '&')
+          .replace(/&#39;/g, "'")
+          .replace(/&quot;/g, '"');
+      textLines.push(decodedText);
+  }
+  
+  return textLines.join(' ');
+}
 
 export default async function handler(req: any, res: any) {
   try {
@@ -49,9 +85,8 @@ export default async function handler(req: any, res: any) {
       }
 
       try {
-        // 3. Fetch transcript
-        const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-        const fullTranscript = transcriptItems.map((t: any) => t.text).join(' ');
+        // 3. Fetch transcript natively
+        const fullTranscript = await fetchTranscript(videoId);
 
         if (!fullTranscript || fullTranscript.length === 0) {
             results.push({ videoId, status: 'error', reason: 'Failed to extract transcript' });

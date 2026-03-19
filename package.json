@@ -10,12 +10,11 @@
   "dependencies": {
     "@google/generative-ai": "^0.2.0",
     "@supabase/supabase-js": "^2.39.8",
-    "rss-parser": "^3.13.0",
-    "youtube-transcript": "^1.0.6"
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
-    "typescript": "^5.3.3",
-    "@vercel/node": "^3.0.0"
+    "@vercel/node": "^3.0.0",
+    "typescript": "^5.3.3"
   }
 }
