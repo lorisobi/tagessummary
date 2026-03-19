@@ -22,55 +22,68 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ message: 'No videos found in playlist.' });
     }
 
-    // We only process the most recent video
-    const latestVideo = feed.items[0];
-    const videoId = latestVideo.id.replace('yt:video:', '');
-    const title = latestVideo.title;
-    const publishedAt = latestVideo.pubDate || new Date().toISOString();
+    // Process the 2 most recent videos
+    const latestVideos = feed.items.slice(0, 2);
+    const results = [];
 
-    // 2. Check if already processed in Supabase
-    const { data: existingData, error: dbError } = await supabase
-      .from('tagesschau_summaries')
-      .select('id')
-      .eq('video_id', videoId)
-      .maybeSingle();
+    for (const video of latestVideos) {
+      const videoId = video.id.replace('yt:video:', '');
+      const title = video.title;
+      const publishedAt = video.pubDate || new Date().toISOString();
 
-    if (existingData) {
-      return res.status(200).json({ message: `Video ${videoId} already processed.` });
-    }
+      // 2. Check if already processed in Supabase
+      const { data: existingData, error: dbError } = await supabase
+        .from('tagesschau_summaries')
+        .select('id')
+        .eq('video_id', videoId)
+        .maybeSingle();
 
-    // 3. Fetch transcript
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-    const fullTranscript = transcriptItems.map(t => t.text).join(' ');
+      if (existingData) {
+        results.push({ videoId, status: 'skipped', reason: 'already processed' });
+        continue;
+      }
 
-    if (!fullTranscript || fullTranscript.length === 0) {
-        return res.status(500).json({ error: 'Failed to extract transcript.' });
-    }
+      try {
+        // 3. Fetch transcript
+        const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+        const fullTranscript = transcriptItems.map(t => t.text).join(' ');
 
-    // 4. Summarize with Gemini
-    const prompt = `Fasse die folgenden Nachrichten der Tagesschau prägnant und übersichtlich in Stichpunkten zusammen. Markiere die wichtigsten Themen klar:\n\n${fullTranscript}`;
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const summary = result.response.text();
+        if (!fullTranscript || fullTranscript.length === 0) {
+            results.push({ videoId, status: 'error', reason: 'Failed to extract transcript' });
+            continue;
+        }
 
-    // 5. Store in Supabase
-    const { error: insertError } = await supabase
-      .from('tagesschau_summaries')
-      .insert({
-        video_id: videoId,
-        title: title,
-        published_at: publishedAt,
-        summary: summary,
-      });
+        // 4. Summarize with Gemini
+        const prompt = `Fasse die folgenden Nachrichten der Tagesschau prägnant und übersichtlich in Stichpunkten zusammen. Markiere die wichtigsten Themen klar:\n\n${fullTranscript}`;
+        
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const response = await model.generateContent(prompt);
+        const summary = response.response.text();
 
-    if (insertError) {
-      throw insertError;
+        // 5. Store in Supabase
+        const { error: insertError } = await supabase
+          .from('tagesschau_summaries')
+          .insert({
+            video_id: videoId,
+            title: title || 'Kein Titel',
+            published_at: publishedAt,
+            summary: summary,
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        results.push({ videoId, status: 'success' });
+      } catch (err: any) {
+        console.error(`Error processing video ${videoId}:`, err);
+        results.push({ videoId, status: 'error', reason: err.message });
+      }
     }
 
     return res.status(200).json({ 
-        message: 'Successfully processed and summarized new Tagesschau video.',
-        videoId: videoId
+        message: 'Cronjob execution finished.',
+        results: results
     });
 
   } catch (error: any) {
