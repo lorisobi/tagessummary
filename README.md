@@ -1,4 +1,6 @@
-# Tagesschau Summarizer Cronjob
+# Tagesschau Summarizer Cronjob 
+
+- Projekt im Rahmen eines Hochschulseminars
 
 Dieses Projekt ist ein serverseitiger Cronjob für Vercel, der automatisiert einmal täglich die neuesten zwei Videos der Tagesschau-Playlist abruft, die Untertitel extrahiert, diese mit Google Gemini zusammenfasst und in einer Supabase Datenbank speichert.
 
