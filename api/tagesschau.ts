@@ -1,10 +1,10 @@
-import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 const TAGESSCHAU_API_URL = 'https://www.tagesschau.de/api2u/channels';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 // Download a direct MP4 file to /tmp
 async function downloadMedia(url: string, id: string): Promise<string> {
@@ -28,9 +28,26 @@ export default async function handler(req: any, res: any) {
     const supabaseKey = process.env.SUPABASE_KEY || '';
     if (!supabaseUrl || !supabaseKey) throw new Error('Supabase credentials missing');
 
-    // New SDK: GoogleGenAI - force stable v1 API instead of v1beta
-    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1' } });
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // --- List available Gemini models ---
+    debugLogs.push('Listing available models...');
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const listData = await listRes.json();
+    const modelNames: string[] = (listData.models || [])
+        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+        .map((m: any) => m.name);
+    debugLogs.push(`Available models: ${modelNames.join(', ')}`);
+
+    // Pick a usable multimodal model (prefer flash variants)
+    const preferredModel = modelNames.find(m => m.includes('flash')) 
+        || modelNames.find(m => m.includes('pro'))
+        || modelNames[0];
+
+    if (!preferredModel) {
+        return res.status(500).json({ error: 'No usable Gemini model found for this API key.', debugLogs });
+    }
+    debugLogs.push(`Using model: ${preferredModel}`);
 
     // --- Fetch Tagesschau API ---
     debugLogs.push(`Fetching ${TAGESSCHAU_API_URL}...`);
@@ -50,7 +67,7 @@ export default async function handler(req: any, res: any) {
 
     if (!videoItem) {
         return res.status(200).json({ 
-            message: 'VERSION 3.0 - No non-livestream video found.', 
+            message: 'VERSION 3.1 - No non-livestream video found.', 
             debugLogs 
         });
     }
@@ -60,7 +77,7 @@ export default async function handler(req: any, res: any) {
     const itemUrl = videoItem.streams.h264s || videoItem.streams.h264m || videoItem.streams.h264xl;
     const itemDate = videoItem.date || new Date().toISOString();
 
-    debugLogs.push(`Selected: "${itemTitle}" (${itemId}) → ${itemUrl}`);
+    debugLogs.push(`Selected: "${itemTitle}" (${itemId})`);
 
     // Check duplicates
     const { data: existingData } = await supabase
@@ -71,7 +88,7 @@ export default async function handler(req: any, res: any) {
 
     if (existingData) {
         return res.status(200).json({ 
-            message: 'VERSION 3.0 - Already processed.', 
+            message: 'VERSION 3.1 - Already processed.', 
             debugLogs 
         });
     }
@@ -80,47 +97,41 @@ export default async function handler(req: any, res: any) {
     debugLogs.push(`Downloading video...`);
     const tmpPath = await downloadMedia(itemUrl, itemId);
     const fileSizeBytes = fs.statSync(tmpPath).size;
-    debugLogs.push(`Downloaded: ${(fileSizeBytes / 1024 / 1024).toFixed(1)} MB`);
+    const fileSizeMB = (fileSizeBytes / 1024 / 1024).toFixed(1);
+    debugLogs.push(`Downloaded: ${fileSizeMB} MB`);
 
-    let uploadedFile: any = null;
     try {
-        // Upload to Gemini File API (new SDK)
-        debugLogs.push(`Uploading to Gemini Files API...`);
-        uploadedFile = await ai.files.upload({
-            file: tmpPath,
-            config: { mimeType: 'video/mp4', displayName: itemTitle }
-        });
-        debugLogs.push(`Uploaded: ${uploadedFile.uri}`);
+        // Encode as base64 for inline sending
+        debugLogs.push(`Encoding as base64...`);
+        const base64Video = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
-        // Wait for file to be processed (ACTIVE state)
-        let fileStatus = uploadedFile;
-        let attempts = 0;
-        while (fileStatus.state === 'PROCESSING' && attempts < 10) {
-            await new Promise(r => setTimeout(r, 3000));
-            fileStatus = await ai.files.get({ name: fileStatus.name });
-            attempts++;
-            debugLogs.push(`File state: ${fileStatus.state} (attempt ${attempts})`);
-        }
-        if (fileStatus.state !== 'ACTIVE') {
-            throw new Error(`File processing failed. Final state: ${fileStatus.state}`);
-        }
+        // Call Gemini REST API directly (no SDK issues)
+        const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/${preferredModel}:generateContent?key=${apiKey}`;
+        debugLogs.push(`Calling Gemini at: ${preferredModel}:generateContent`);
 
-        // Summarize with Gemini
-        debugLogs.push(`Generating summary...`);
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: [
-                {
+        const geminiRes = await fetch(modelEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
                     parts: [
-                        { fileData: { fileUri: uploadedFile.uri, mimeType: 'video/mp4' } },
+                        { inline_data: { mime_type: 'video/mp4', data: base64Video } },
                         { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch.` }
                     ]
-                }
-            ]
+                }]
+            })
         });
 
-        const summary = response.text ?? '';
+        if (!geminiRes.ok) {
+            const errBody = await geminiRes.text();
+            throw new Error(`Gemini API error ${geminiRes.status}: ${errBody}`);
+        }
+
+        const geminiData = await geminiRes.json();
+        const summary = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
         debugLogs.push(`Summary generated (${summary.length} chars).`);
+
+        if (!summary) throw new Error('Gemini returned empty summary');
 
         // Save to Supabase
         const { error: insertError } = await supabase
@@ -137,18 +148,13 @@ export default async function handler(req: any, res: any) {
         debugLogs.push(`Saved to Supabase!`);
 
         return res.status(200).json({
-            message: 'VERSION 3.0 - Success!',
+            message: 'VERSION 3.1 - Success!',
             videoId: itemId,
             title: itemTitle,
             debugLogs
         });
 
     } finally {
-        // Cleanup Gemini file
-        if (uploadedFile?.name) {
-            await ai.files.delete({ name: uploadedFile.name }).catch(() => {});
-        }
-        // Cleanup local temp file
         if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
     }
 
