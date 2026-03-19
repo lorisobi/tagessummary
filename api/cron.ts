@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-// @ts-ignore
-import { GoogleAIFileManager } from '@google/generative-ai/server';
+import { GoogleAIFileManager } from '@google/generative-ai/files';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
