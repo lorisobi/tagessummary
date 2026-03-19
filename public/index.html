@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tagesschau Zusammenfassungen</title>
+    <!-- Use Outfit font for a premium modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+    
+    <main class="container">
+        <header>
+            <h1>TL;DR: Tagesschau.</h1>
+            <p>Die neuesten Nachrichten kompakt zusammengefasst, powered by KI.</p>
+        </header>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Lade neueste Nachrichten...</p>
+        </div>
+
+        <div id="video-grid" class="video-grid">
+            <!-- Items injected by app.js -->
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
