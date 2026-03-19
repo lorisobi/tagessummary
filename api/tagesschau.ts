@@ -104,7 +104,15 @@ export default async function handler(req: any, res: any) {
         });
 
         // Summarize with fallbacks
-        const modelNames = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash-001", "gemini-1.5-flash-002", "gemini-pro-vision"];
+        const modelNames = [
+            "gemini-1.5-flash", 
+            "gemini-1.5-flash-latest", 
+            "gemini-1.5-flash-001",
+            "gemini-1.5-flash-002",
+            "gemini-1.5-flash-8b", 
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro"
+        ];
         let responseText = "";
         let errorMsg = "";
 
@@ -156,7 +164,7 @@ export default async function handler(req: any, res: any) {
     }
 
     return res.status(200).json({ 
-        message: 'VERSION 2.2 - News Summarizer Running!',
+        message: 'VERSION 2.3 - News Summarizer Running!',
         results, 
         debugLogs 
     });
