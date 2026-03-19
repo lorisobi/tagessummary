@@ -3,32 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tagesschau Zusammenfassungen</title>
-    <!-- Use Outfit font for a premium modern look -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="KI-generierte Zusammenfassungen der tagesaktuellen Tagesschau-Beiträge">
+    <title>Tagesschau KI-Zusammenfassungen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="background-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-    </div>
-    
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-ts">tagesschau</span>
+                <span class="logo-badge">KI-Zusammenfassungen</span>
+            </div>
+        </div>
+    </header>
+
     <main class="container">
-        <header>
-            <h1>TL;DR: Tagesschau.</h1>
-            <p>Die neuesten Nachrichten kompakt zusammengefasst, powered by KI.</p>
-        </header>
-        
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Lade neueste Nachrichten...</p>
+        <div class="page-intro">
+            <h1>Nachrichten kompakt</h1>
+            <p>Die neuesten Beiträge automatisch zusammengefasst · powered by Gemini</p>
         </div>
 
-        <div id="video-grid" class="video-grid">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Lade Beiträge...</p>
+        </div>
+
+        <div id="error-msg" class="error-msg" style="display:none"></div>
+
+        <div id="article-list" class="article-list">
             <!-- Items injected by app.js -->
         </div>
     </main>
+
+    <footer class="site-footer">
+        <p>Inhalte automatisch erstellt · Kein offizielles Angebot der ARD</p>
+    </footer>
 
     <script src="/app.js"></script>
 </body>
