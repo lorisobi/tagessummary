@@ -28,8 +28,8 @@ export default async function handler(req: any, res: any) {
     const supabaseKey = process.env.SUPABASE_KEY || '';
     if (!supabaseUrl || !supabaseKey) throw new Error('Supabase credentials missing');
 
-    // New SDK: GoogleGenAI
-    const ai = new GoogleGenAI({ apiKey });
+    // New SDK: GoogleGenAI - force stable v1 API instead of v1beta
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1' } });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // --- Fetch Tagesschau API ---
