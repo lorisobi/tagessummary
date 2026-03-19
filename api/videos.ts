@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default async function handler(req: any, res: any) {
   try {
+    let supabaseUrl = process.env.SUPABASE_URL || '';
+    if (supabaseUrl && !supabaseUrl.startsWith('http')) supabaseUrl = `https://${supabaseUrl}`;
+    const supabaseKey = process.env.SUPABASE_KEY || '';
+    
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Supabase credentials are not configured in Environment Variables.");
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const { data, error } = await supabase
       .from('tagesschau_summaries')
       .select('*')

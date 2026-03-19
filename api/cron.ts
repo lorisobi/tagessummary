@@ -3,17 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import Parser from 'rss-parser';
 import { YoutubeTranscript } from 'youtube-transcript';
 
-// Initialize clients
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const TAGESSCHAU_PLAYLIST_ID = 'PL4A2F331EE86DCC22';
 const RSS_FEED_URL = `https://www.youtube.com/feeds/videos.xml?playlist_id=${TAGESSCHAU_PLAYLIST_ID}`;
 
 export default async function handler(req: any, res: any) {
   try {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+    
+    let supabaseUrl = process.env.SUPABASE_URL || '';
+    if (supabaseUrl && !supabaseUrl.startsWith('http')) supabaseUrl = `https://${supabaseUrl}`;
+    const supabaseKey = process.env.SUPABASE_KEY || '';
+    if (!supabaseUrl || !supabaseKey) throw new Error('Supabase credentials missing');
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // 1. Fetch latest videos from RSS
     const parser = new Parser();
     const feed = await parser.parseURL(RSS_FEED_URL);
