@@ -1,6 +1,6 @@
 # Tagesschau Summarizer Cronjob
 
-Dieses Projekt ist ein serverseitiger Cronjob für Vercel, der automatisch die neuesten Videos der Tagesschau-Playlist abruft, die Untertitel extrahiert, diese mit Google Gemini zusammenfasst und in einer Supabase Datenbank speichert.
+Dieses Projekt ist ein serverseitiger Cronjob für Vercel, der automatisiert einmal täglich die neuesten zwei Videos der Tagesschau-Playlist abruft, die Untertitel extrahiert, diese mit Google Gemini zusammenfasst und in einer Supabase Datenbank speichert.
 
 ## Vorbereitungen
 
@@ -25,7 +25,7 @@ Setze in Vercel folgende Umgebungsvariablen für dein Projekt:
 - `GEMINI_API_KEY`: API Key von Google Gemini.
 
 ### 3. Vercel Deployment
-Das Projekt kann direkt in Vercel importiert werden. Durch die \`vercel.json\` ist der Cronjob automatisch konfiguriert und wird nach Deployment stündlich (zur vollen Stunde) ausgeführt.
+Das Projekt kann direkt in Vercel importiert werden. Durch die \`vercel.json\` ist der Cronjob automatisch konfiguriert und wird nach Deployment einmal täglich (um 21:00 Uhr UTC, kurz nach der regulären Tagesschau-Ausstrahlung) ausgeführt.
 
 ## Testen
 Um den Cronjob manuell in Vercel auszulösen, nutze den Vercel Dashboard Bereich **Settings -> Cron Jobs** oder rufe den Endpoint in der Entwicklung manuell auf.
