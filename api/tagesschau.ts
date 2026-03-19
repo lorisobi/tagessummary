@@ -26,9 +26,13 @@ export default async function handler(req: any, res: any) {
         let supabaseUrl = process.env.SUPABASE_URL || '';
         if (supabaseUrl && !supabaseUrl.startsWith('http')) supabaseUrl = `https://${supabaseUrl}`;
         const supabaseKey = process.env.SUPABASE_KEY || '';
+        console.log('[Supabase] URL present:', !!supabaseUrl, '| URL value:', supabaseUrl);
+        console.log('[Supabase] KEY present:', !!supabaseKey, '| KEY length:', supabaseKey.length);
         if (!supabaseUrl || !supabaseKey) throw new Error('Supabase credentials missing');
 
+        console.log('[Supabase] Creating client...');
         const supabase = createClient(supabaseUrl, supabaseKey);
+        console.log('[Supabase] Client created.');
 
         // --- List available Gemini models ---
         debugLogs.push('Listing available models...');
@@ -80,11 +84,18 @@ export default async function handler(req: any, res: any) {
         debugLogs.push(`Selected: "${itemTitle}" (${itemId})`);
 
         // Check duplicates
-        const { data: existingData } = await supabase
+        console.log('[Supabase] Checking for duplicate video_id:', itemId);
+        const { data: existingData, error: existingError } = await supabase
             .from('tagesschau_summaries')
             .select('id')
             .eq('video_id', itemId)
             .maybeSingle();
+        console.log('[Supabase] Duplicate check result:', existingData, '| error:', existingError);
+
+        if (existingError) {
+            debugLogs.push(`Supabase duplicate-check error: ${existingError.message}`);
+            console.error('[Supabase] Duplicate check error:', existingError);
+        }
 
         if (existingData) {
             return res.status(200).json({
@@ -134,7 +145,8 @@ export default async function handler(req: any, res: any) {
             if (!summary) throw new Error('Gemini returned empty summary');
 
             // Save to Supabase
-            const { error: insertError } = await supabase
+            console.log('[Supabase] Inserting record for video_id:', itemId);
+            const { data: insertData, error: insertError } = await supabase
                 .from('tagesschau_summaries')
                 .insert({
                     video_id: itemId,
@@ -142,9 +154,14 @@ export default async function handler(req: any, res: any) {
                     source: 'tagesschau_api',
                     published_at: itemDate,
                     summary,
-                });
+                })
+                .select();
+            console.log('[Supabase] Insert result:', insertData, '| error:', insertError);
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                debugLogs.push(`Supabase insert error: ${insertError.message} | code: ${insertError.code}`);
+                throw insertError;
+            }
             debugLogs.push(`Saved to Supabase!`);
 
             return res.status(200).json({
