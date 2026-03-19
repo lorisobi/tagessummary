@@ -51,7 +51,7 @@ export default async function handler(req: any, res: any) {
       try {
         // 3. Fetch transcript
         const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-        const fullTranscript = transcriptItems.map(t => t.text).join(' ');
+        const fullTranscript = transcriptItems.map((t: any) => t.text).join(' ');
 
         if (!fullTranscript || fullTranscript.length === 0) {
             results.push({ videoId, status: 'error', reason: 'Failed to extract transcript' });

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Tagesschau YouTube Summarizer",
   "main": "api/cron.ts",
+  "type": "module",
   "scripts": {
     "dev": "vercel dev"
   },
