@@ -81,6 +81,7 @@ header h1 {
     font-weight: 700;
     background: linear-gradient(135deg, #ffffff, #cbd5e1);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 1rem;
     letter-spacing: -1px;
@@ -156,17 +157,44 @@ header p {
     opacity: 1;
 }
 
+.card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
 .card-date {
     font-size: 0.85rem;
     color: #cbd5e1;
     font-weight: 600;
-    margin-bottom: 1.5rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     display: inline-block;
     padding: 0.4rem 0.8rem;
     background: rgba(255,255,255,0.1);
     border-radius: 8px;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.badge-yt {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-api {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .card-title {

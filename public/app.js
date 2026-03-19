@@ -60,11 +60,17 @@ function createCard(video, index) {
     const dateStr = isToday ? `Heute, ${timeStr} Uhr` : 
                     `${date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}, ${timeStr} Uhr`;
 
+    const sourceLabel = video.source === 'tagesschau_api' ? 'Tagesschau 100s' : 'YouTube';
+    const sourceClass = video.source === 'tagesschau_api' ? 'badge-api' : 'badge-yt';
+
     el.innerHTML = `
-        <div class="card-date">${dateStr}</div>
+        <div class="card-meta">
+            <div class="card-date">${dateStr}</div>
+            <div class="badge ${sourceClass}">${sourceLabel}</div>
+        </div>
         <h2 class="card-title">${video.title}</h2>
         <div class="card-summary">${htmlSummary}</div>
-        <a href="https://www.youtube.com/watch?v=${video.video_id}" target="_blank" rel="noopener noreferrer" class="card-link">
+        <a href="${video.source === 'youtube' ? 'https://www.youtube.com/watch?v=' + video.video_id : 'https://www.tagesschau.de/'}" target="_blank" rel="noopener noreferrer" class="card-link">
             Beitrag ansehen
             <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         </a>
