@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleAIFileManager } from '@google/generative-ai/files';
+import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
@@ -7,17 +6,19 @@ import os from 'os';
 
 const TAGESSCHAU_API_URL = 'https://www.tagesschau.de/api2u/channels';
 
-// Helfer-Funktion: Direkte Datei (MP4) herunterladen
-async function downloadDirectMedia(url: string, id: string): Promise<string> {
+// Download a direct MP4 file to /tmp
+async function downloadMedia(url: string, id: string): Promise<string> {
     const tmpPath = path.join(os.tmpdir(), `ts_${id.replace(/[^a-z0-9]/gi, '_')}.mp4`);
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+    if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
     const arrayBuffer = await response.arrayBuffer();
     fs.writeFileSync(tmpPath, Buffer.from(arrayBuffer));
     return tmpPath;
 }
 
 export default async function handler(req: any, res: any) {
+  const debugLogs: string[] = [];
+  
   try {
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
@@ -27,150 +28,133 @@ export default async function handler(req: any, res: any) {
     const supabaseKey = process.env.SUPABASE_KEY || '';
     if (!supabaseUrl || !supabaseKey) throw new Error('Supabase credentials missing');
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const fileManager = new GoogleAIFileManager(apiKey);
+    // New SDK: GoogleGenAI
+    const ai = new GoogleGenAI({ apiKey });
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const itemsToProcess: any[] = [];
-    const debugLogs: string[] = [];
+    // --- Fetch Tagesschau API ---
+    debugLogs.push(`Fetching ${TAGESSCHAU_API_URL}...`);
+    const tsRes = await fetch(TAGESSCHAU_API_URL);
+    const tsData = await tsRes.json();
+    const channels = tsData.channels || [];
+    debugLogs.push(`Found ${channels.length} channels.`);
 
-    // --- Fetch Tagesschau API (100 Sekunden) ---
-    try {
-        debugLogs.push(`Fetching ${TAGESSCHAU_API_URL}...`);
-        const tsRes = await fetch(TAGESSCHAU_API_URL);
-        const tsData = await tsRes.json();
-        const channels = tsData.channels || [];
-        debugLogs.push(`Found ${channels.length} channels.`);
-        
-        // Log all titles for debugging
-        channels.forEach((c: any, i: number) => {
-            debugLogs.push(`Channel ${i}: "${c.title}" (ID: ${c.sophoraId})`);
-        });
-
-        // Wir suchen den ersten Channel, der kein Livestream ist (identifizierbar an h264-Streams)
-        const item100s = channels.find((c: any) => 
-            c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl)
-        );
-        
-        if (item100s) {
-            debugLogs.push(`Found 100s item: ${item100s.sophoraId || item100s.externalId}`);
-            if (item100s.streams && item100s.streams.h264s) {
-                itemsToProcess.push({
-                    id: item100s.sophoraId || item100s.externalId,
-                    title: 'Tagesschau in 100 Sekunden',
-                    pubDate: item100s.date || new Date().toISOString(),
-                    source: 'tagesschau_api',
-                    url: item100s.streams.h264s || item100s.streams.h264m || item100s.streams.h264xl,
-                    type: 'video/mp4'
-                });
-            } else {
-                debugLogs.push('100s item has no h264s stream.');
-            }
-        } else {
-            debugLogs.push('Program "tagesschau_in_100_Sekunden" not found in channels.');
-        }
-    } catch (e: any) {
-        debugLogs.push(`Tagesschau API fetch failed: ${e.message}`);
-        console.error('Tagesschau API fetch failed', e);
-    }
-
-    debugLogs.push(`Items to process: ${itemsToProcess.length}`);
-    const results = [];
-
-    for (const item of itemsToProcess) {
-      // Check if already processed
-      const { data: existingData } = await supabase
-        .from('tagesschau_summaries')
-        .select('id')
-        .eq('video_id', item.id)
-        .maybeSingle();
-
-      if (existingData) {
-        results.push({ id: item.id, status: 'skipped', reason: 'already processed' });
-        continue;
-      }
-
-      let tmpPath = null;
-      let uploadResponse = null;
-      
-      try {
-        // Download
-        tmpPath = await downloadDirectMedia(item.url, item.id);
-
-        // Upload to Gemini
-        uploadResponse = await fileManager.uploadFile(tmpPath, {
-            mimeType: item.type,
-            displayName: item.title,
-        });
-
-        // Summarize with fallbacks
-        const modelNames = [
-            "gemini-1.5-flash", 
-            "gemini-1.5-flash-latest", 
-            "gemini-1.5-flash-001",
-            "gemini-1.5-flash-002",
-            "gemini-1.5-flash-8b", 
-            "gemini-2.0-flash-exp",
-            "gemini-1.5-pro"
-        ];
-        let responseText = "";
-        let errorMsg = "";
-
-        for (const modelName of modelNames) {
-            try {
-                debugLogs.push(`Trying model ${modelName}...`);
-                const model = genAI.getGenerativeModel({ model: modelName }); 
-                const prompt = `Fasse diesen Nachrichtenbeitrag ("${item.title}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten.`;
-                
-                const response = await model.generateContent([
-                    { fileData: { mimeType: uploadResponse.file.mimeType, fileUri: uploadResponse.file.uri } } as any,
-                    { text: prompt }
-                ]);
-                
-                responseText = response.response.text();
-                debugLogs.push(`Successfully summarized with ${modelName}.`);
-                break;
-            } catch (modelErr: any) {
-                errorMsg = modelErr.message;
-                debugLogs.push(`Model ${modelName} failed: ${modelErr.message}`);
-            }
-        }
-
-        if (!responseText) throw new Error(`All Gemini models failed. Last error: ${errorMsg}`);
-        
-        const summary = responseText;
-
-        // Save
-        const { error: insertError } = await supabase
-          .from('tagesschau_summaries')
-          .insert({
-            video_id: item.id,
-            title: item.title,
-            source: item.source,
-            published_at: item.pubDate,
-            summary: summary,
-          });
-
-        if (insertError) throw insertError;
-        results.push({ id: item.id, status: 'success' });
-
-      } catch (err: any) {
-        console.error(`Error processing ${item.id}:`, err);
-        results.push({ id: item.id, status: 'error', reason: err.message });
-      } finally {
-        if (uploadResponse?.file) await fileManager.deleteFile(uploadResponse.file.name).catch(() => {});
-        if (tmpPath && fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-      }
-    }
-
-    return res.status(200).json({ 
-        message: 'VERSION 2.3 - News Summarizer Running!',
-        results, 
-        debugLogs 
+    channels.forEach((c: any, i: number) => {
+        debugLogs.push(`Channel ${i}: "${c.title}" (sophoraId: ${c.sophoraId})`);
     });
 
+    // Find first non-livestream video (has direct h264 streams)
+    const videoItem = channels.find((c: any) => 
+        c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl)
+    );
+
+    if (!videoItem) {
+        return res.status(200).json({ 
+            message: 'VERSION 3.0 - No non-livestream video found.', 
+            debugLogs 
+        });
+    }
+
+    const itemId = videoItem.sophoraId || videoItem.externalId;
+    const itemTitle = videoItem.title || 'Tagesschau';
+    const itemUrl = videoItem.streams.h264s || videoItem.streams.h264m || videoItem.streams.h264xl;
+    const itemDate = videoItem.date || new Date().toISOString();
+
+    debugLogs.push(`Selected: "${itemTitle}" (${itemId}) → ${itemUrl}`);
+
+    // Check duplicates
+    const { data: existingData } = await supabase
+        .from('tagesschau_summaries')
+        .select('id')
+        .eq('video_id', itemId)
+        .maybeSingle();
+
+    if (existingData) {
+        return res.status(200).json({ 
+            message: 'VERSION 3.0 - Already processed.', 
+            debugLogs 
+        });
+    }
+
+    // Download video  
+    debugLogs.push(`Downloading video...`);
+    const tmpPath = await downloadMedia(itemUrl, itemId);
+    const fileSizeBytes = fs.statSync(tmpPath).size;
+    debugLogs.push(`Downloaded: ${(fileSizeBytes / 1024 / 1024).toFixed(1)} MB`);
+
+    let uploadedFile: any = null;
+    try {
+        // Upload to Gemini File API (new SDK)
+        debugLogs.push(`Uploading to Gemini Files API...`);
+        uploadedFile = await ai.files.upload({
+            file: tmpPath,
+            config: { mimeType: 'video/mp4', displayName: itemTitle }
+        });
+        debugLogs.push(`Uploaded: ${uploadedFile.uri}`);
+
+        // Wait for file to be processed (ACTIVE state)
+        let fileStatus = uploadedFile;
+        let attempts = 0;
+        while (fileStatus.state === 'PROCESSING' && attempts < 10) {
+            await new Promise(r => setTimeout(r, 3000));
+            fileStatus = await ai.files.get({ name: fileStatus.name });
+            attempts++;
+            debugLogs.push(`File state: ${fileStatus.state} (attempt ${attempts})`);
+        }
+        if (fileStatus.state !== 'ACTIVE') {
+            throw new Error(`File processing failed. Final state: ${fileStatus.state}`);
+        }
+
+        // Summarize with Gemini
+        debugLogs.push(`Generating summary...`);
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: [
+                {
+                    parts: [
+                        { fileData: { fileUri: uploadedFile.uri, mimeType: 'video/mp4' } },
+                        { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch.` }
+                    ]
+                }
+            ]
+        });
+
+        const summary = response.text ?? '';
+        debugLogs.push(`Summary generated (${summary.length} chars).`);
+
+        // Save to Supabase
+        const { error: insertError } = await supabase
+            .from('tagesschau_summaries')
+            .insert({
+                video_id: itemId,
+                title: itemTitle,
+                source: 'tagesschau_api',
+                published_at: itemDate,
+                summary,
+            });
+
+        if (insertError) throw insertError;
+        debugLogs.push(`Saved to Supabase!`);
+
+        return res.status(200).json({
+            message: 'VERSION 3.0 - Success!',
+            videoId: itemId,
+            title: itemTitle,
+            debugLogs
+        });
+
+    } finally {
+        // Cleanup Gemini file
+        if (uploadedFile?.name) {
+            await ai.files.delete({ name: uploadedFile.name }).catch(() => {});
+        }
+        // Cleanup local temp file
+        if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    }
+
   } catch (error: any) {
+    debugLogs.push(`FATAL ERROR: ${error.message}`);
     console.error('Global Cron Error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message, debugLogs });
   }
 }
