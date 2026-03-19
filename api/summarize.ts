@@ -42,8 +42,11 @@ export default async function handler(req: any, res: any) {
         const channels = tsData.channels || [];
         debugLogs.push(`Found ${channels.length} channels.`);
         
-        // Wir nehmen die "Tagesschau in 100 Sekunden"
-        const item100s = channels.find((c: any) => c.program === 'tagesschau_in_100_Sekunden');
+        // Wir suchen die Sendung "Tagesschau in 100 Sekunden" über den Titel oder das Tracking
+        const item100s = channels.find((c: any) => 
+            c.title?.toLowerCase().includes('100 sekunden') || 
+            c.tracking?.some((t: any) => t.program === 'tagesschau_in_100_Sekunden')
+        );
         
         if (item100s) {
             debugLogs.push(`Found 100s item: ${item100s.sophoraId || item100s.externalId}`);
