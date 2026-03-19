@@ -103,16 +103,34 @@ export default async function handler(req: any, res: any) {
             displayName: item.title,
         });
 
-        // Summarize
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); 
-        const prompt = `Fasse diesen Nachrichtenbeitrag ("${item.title}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten.`;
+        // Summarize with fallbacks
+        const modelNames = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash-001", "gemini-1.5-flash-002", "gemini-pro-vision"];
+        let responseText = "";
+        let errorMsg = "";
+
+        for (const modelName of modelNames) {
+            try {
+                debugLogs.push(`Trying model ${modelName}...`);
+                const model = genAI.getGenerativeModel({ model: modelName }); 
+                const prompt = `Fasse diesen Nachrichtenbeitrag ("${item.title}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten.`;
+                
+                const response = await model.generateContent([
+                    { fileData: { mimeType: uploadResponse.file.mimeType, fileUri: uploadResponse.file.uri } } as any,
+                    { text: prompt }
+                ]);
+                
+                responseText = response.response.text();
+                debugLogs.push(`Successfully summarized with ${modelName}.`);
+                break;
+            } catch (modelErr: any) {
+                errorMsg = modelErr.message;
+                debugLogs.push(`Model ${modelName} failed: ${modelErr.message}`);
+            }
+        }
+
+        if (!responseText) throw new Error(`All Gemini models failed. Last error: ${errorMsg}`);
         
-        const response = await model.generateContent([
-            { fileData: { mimeType: uploadResponse.file.mimeType, fileUri: uploadResponse.file.uri } } as any,
-            { text: prompt }
-        ]);
-        
-        const summary = response.response.text();
+        const summary = responseText;
 
         // Save
         const { error: insertError } = await supabase
