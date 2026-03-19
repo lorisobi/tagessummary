@@ -6,7 +6,10 @@ async function loadVideos() {
     try {
         const res = await fetch('/api/videos');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const videos = await res.json();
+        const json = await res.json();
+        console.log('[app.js] API response:', json);
+        const videos = json.videos || [];
+        console.log('[app.js] Videos count:', videos.length);
 
         loadingEl.style.display = 'none';
 
