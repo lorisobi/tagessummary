@@ -32,30 +32,42 @@ export default async function handler(req: any, res: any) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const itemsToProcess: any[] = [];
+    const debugLogs: string[] = [];
 
     // --- Fetch Tagesschau API (100 Sekunden) ---
     try {
+        debugLogs.push(`Fetching ${TAGESSCHAU_API_URL}...`);
         const tsRes = await fetch(TAGESSCHAU_API_URL);
         const tsData = await tsRes.json();
         const channels = tsData.channels || [];
+        debugLogs.push(`Found ${channels.length} channels.`);
         
         // Wir nehmen die "Tagesschau in 100 Sekunden"
         const item100s = channels.find((c: any) => c.program === 'tagesschau_in_100_Sekunden');
         
-        if (item100s && item100s.streams && item100s.streams.h264s) {
-            itemsToProcess.push({
-                id: item100s.sophoraId || item100s.externalId,
-                title: 'Tagesschau in 100 Sekunden',
-                pubDate: item100s.date || new Date().toISOString(),
-                source: 'tagesschau_api',
-                url: item100s.streams.h264s,
-                type: 'video/mp4'
-            });
+        if (item100s) {
+            debugLogs.push(`Found 100s item: ${item100s.sophoraId || item100s.externalId}`);
+            if (item100s.streams && item100s.streams.h264s) {
+                itemsToProcess.push({
+                    id: item100s.sophoraId || item100s.externalId,
+                    title: 'Tagesschau in 100 Sekunden',
+                    pubDate: item100s.date || new Date().toISOString(),
+                    source: 'tagesschau_api',
+                    url: item100s.streams.h264s,
+                    type: 'video/mp4'
+                });
+            } else {
+                debugLogs.push('100s item has no h264s stream.');
+            }
+        } else {
+            debugLogs.push('Program "tagesschau_in_100_Sekunden" not found in channels.');
         }
-    } catch (e) {
+    } catch (e: any) {
+        debugLogs.push(`Tagesschau API fetch failed: ${e.message}`);
         console.error('Tagesschau API fetch failed', e);
     }
 
+    debugLogs.push(`Items to process: ${itemsToProcess.length}`);
     const results = [];
 
     for (const item of itemsToProcess) {
@@ -118,7 +130,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    return res.status(200).json({ results });
+    return res.status(200).json({ results, debugLogs });
 
   } catch (error: any) {
     console.error('Global Cron Error:', error);
