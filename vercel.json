@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/summarize",
+      "path": "/api/tagesschau",
       "schedule": "0 21 * * *"
     }
   ]
