@@ -130,7 +130,11 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    return res.status(200).json({ results, debugLogs });
+    return res.status(200).json({ 
+        message: 'VERSION 2.0 - News Summarizer Running!',
+        results, 
+        debugLogs 
+    });
 
   } catch (error: any) {
     console.error('Global Cron Error:', error);
