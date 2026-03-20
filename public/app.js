@@ -97,9 +97,16 @@ async function loadVideos() {
 
             const summaryHtml = parseMarkdown(video.summary);
 
-            const linkHref = video.source === 'youtube'
-                ? `https://www.youtube.com/watch?v=${video.video_id}`
-                : 'https://www.tagesschau.de/';
+            const linkHref = video.url || 'https://www.tagesschau.de/';
+
+            const transcriptHtml = video.transcript 
+                ? `<div class="article-transcript">
+                    <details>
+                        <summary>Wörtliches Transkript anzeigen</summary>
+                        <p>${video.transcript.replace(/\n/g, '<br>')}</p>
+                    </details>
+                   </div>`
+                : '';
 
             el.innerHTML = `
                 <div class="article-meta">
@@ -107,6 +114,7 @@ async function loadVideos() {
                 </div>
                 <h2 class="article-title">${video.title}</h2>
                 <div class="article-summary">${summaryHtml}</div>
+                ${transcriptHtml}
                 <a href="${linkHref}" target="_blank" rel="noopener noreferrer" class="article-link">
                     Zum Beitrag
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

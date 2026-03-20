@@ -131,9 +131,19 @@ export default async function handler(req: any, res: any) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{
+                            role: 'user',
                             parts: [
                                 { inline_data: { mime_type: 'video/mp4', data: base64Video } },
-                                { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch. Nutze Markdown-Formatierung für die Darstellung (z.B. Fettschrift für wichtige Begriffe, Aufzählungszeichen).` }
+                                { text: `Analysiere diesen Tagesschau-Beitrag ("${itemTitle}") und erstelle:
+1. Eine prägnante Zusammenfassung im Markdown-Format (Fettmarkierungen für wichtige Begriffe, Aufzählungen).
+2. Das wörtliche Transkript (den gesprochenen Text) des Beitrags.
+
+Antworte bitte EXAKT in diesem Format:
+[SUMMARY]
+(Hier die Zusammenfassung)
+
+[TRANSCRIPT]
+(Hier das wörtliche Transkript)` }
                             ]
                         }]
                     })
@@ -145,10 +155,18 @@ export default async function handler(req: any, res: any) {
                 }
 
                 const geminiData = await geminiRes.json();
-                const summary = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+                const aiResponse = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
                 
-                if (!summary) throw new Error('Gemini returned empty summary');
-                debugLogs.push(`Summary generated (${summary.length} chars).`);
+                if (!aiResponse) throw new Error('Gemini returned empty response');
+                
+                // Split summary and transcript
+                const parts = aiResponse.split('[TRANSCRIPT]');
+                const summary = parts[0].replace('[SUMMARY]', '').trim();
+                const transcript = parts[1] ? parts[1].trim() : '';
+
+                // Extract URL from tracking (Nielsen p5)
+                const nielsen = videoItem.tracking?.find((t: any) => t.c5 && t.c5.startsWith('p5,'));
+                const webUrl = nielsen ? nielsen.c5.split(',')[1] : 'https://www.tagesschau.de/';
 
                 // Save to Supabase
                 const { error: insertError } = await supabase
@@ -159,6 +177,8 @@ export default async function handler(req: any, res: any) {
                         source: 'tagesschau_api',
                         published_at: itemDate,
                         summary,
+                        transcript,
+                        url: webUrl
                     });
 
                 if (insertError) throw insertError;

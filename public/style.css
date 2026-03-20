@@ -234,6 +234,53 @@ body {
     margin-bottom: 0.8rem;
 }
 
+.article-transcript {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed var(--ts-border);
+}
+
+.article-transcript details {
+    background: #fcfcfc;
+    border: 1px solid var(--ts-border);
+    border-radius: 6px;
+    padding: 0.5rem;
+}
+
+.article-transcript summary {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ts-muted);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.article-transcript summary::-webkit-details-marker {
+    display: none;
+}
+
+.article-transcript summary::before {
+    content: '▶';
+    font-size: 0.7rem;
+    transition: transform 0.2s ease;
+}
+
+.article-transcript details[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.article-transcript p {
+    font-size: 0.85rem;
+    color: var(--ts-muted);
+    line-height: 1.5;
+    margin-top: 0.5rem;
+    padding: 0 0.5rem;
+    font-style: italic;
+}
+
 .article-link {
     display: inline-flex;
     align-items: center;
