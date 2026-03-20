@@ -217,10 +217,27 @@ body {
     position: absolute;
     left: 0;
     top: 0.55em;
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     background: var(--ts-red);
     border-radius: 50%;
+}
+
+.article-summary h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ts-dark);
+    margin: 1.2rem 0 0.5rem 0;
+}
+
+.article-summary hr {
+    border: 0;
+    border-top: 1px solid var(--ts-border);
+    margin: 1rem 0;
+}
+
+.article-summary p {
+    margin-bottom: 0.8rem;
 }
 
 .article-link {

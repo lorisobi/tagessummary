@@ -39,28 +39,55 @@ async function loadVideos() {
                 
                 // 1. Handle bold (**text**)
                 html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                
-                // 2. Handle lists (lines starting with -, *, •)
+
                 const lines = html.split('\n');
                 let inList = false;
                 const processedLines = [];
                 
                 lines.forEach(line => {
                     const trimmed = line.trim();
-                    const isBullet = trimmed.match(/^[-*•]\s+/);
+                    if (!trimmed) {
+                        if (inList) {
+                            processedLines.push('</ul>');
+                            inList = false;
+                        }
+                        return;
+                    }
+
+                    // 2. Handle horizontal rules (---)
+                    if (trimmed === '---') {
+                        if (inList) {
+                            processedLines.push('</ul>');
+                            inList = false;
+                        }
+                        processedLines.push('<hr>');
+                        return;
+                    }
+
+                    // 3. Handle headers (###)
+                    if (trimmed.startsWith('###')) {
+                        if (inList) {
+                            processedLines.push('</ul>');
+                            inList = false;
+                        }
+                        processedLines.push(`<h3>${trimmed.replace(/^###\s*/, '')}</h3>`);
+                        return;
+                    }
                     
+                    // 4. Handle lists (lines starting with -, *, •)
+                    const isBullet = trimmed.match(/^[-*•]\s*/);
                     if (isBullet) {
                         if (!inList) {
                             processedLines.push('<ul>');
                             inList = true;
                         }
-                        processedLines.push(`<li>${trimmed.replace(/^[-*•]\s+/, '')}</li>`);
+                        processedLines.push(`<li>${trimmed.replace(/^[-*•]\s*/, '')}</li>`);
                     } else {
                         if (inList) {
                             processedLines.push('</ul>');
                             inList = false;
                         }
-                        if (trimmed) processedLines.push(`<p>${trimmed}</p>`);
+                        processedLines.push(`<p>${trimmed}</p>`);
                     }
                 });
                 
