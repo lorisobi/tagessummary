@@ -97,8 +97,6 @@ async function loadVideos() {
 
             const summaryHtml = parseMarkdown(video.summary);
 
-            const sourceLabel = video.source === 'tagesschau_api' ? '100 Sek' : 'YouTube';
-
             const linkHref = video.source === 'youtube'
                 ? `https://www.youtube.com/watch?v=${video.video_id}`
                 : 'https://www.tagesschau.de/';
@@ -106,7 +104,6 @@ async function loadVideos() {
             el.innerHTML = `
                 <div class="article-meta">
                     <span class="article-date">${dateStr}</span>
-                    <span class="article-source">${sourceLabel}</span>
                 </div>
                 <h2 class="article-title">${video.title}</h2>
                 <div class="article-summary">${summaryHtml}</div>
