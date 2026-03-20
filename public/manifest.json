@@ -1,0 +1,17 @@
+{
+  "name": "tagessummary",
+  "short_name": "TS Summary",
+  "description": "KI-Zusammenfassungen der Tagesschau",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003c64",
+  "theme_color": "#003c64",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
