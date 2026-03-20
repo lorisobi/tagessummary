@@ -168,6 +168,19 @@ Antworte bitte EXAKT in diesem Format:
                 const nielsen = videoItem.tracking?.find((t: any) => t.c5 && t.c5.startsWith('p5,'));
                 const webUrl = nielsen ? nielsen.c5.split(',')[1] : 'https://www.tagesschau.de/';
 
+                // Extract program type (100s, 20uhr, standard)
+                let programId = 'standard';
+                const tsProgram = videoItem.tracking?.find((t: any) => t.program);
+                const progType = (tsProgram?.program || videoItem.title || '').toLowerCase();
+                
+                if (progType.includes('100_sekunden') || progType.includes('100 sek')) {
+                    programId = '100s';
+                } else if (progType.includes('20_uhr') || progType.includes('20:00') || progType.includes('20 uhr')) {
+                    programId = '20uhr';
+                } else if (progType.includes('tagesthemen')) {
+                    programId = 'tt';
+                }
+
                 // Save to Supabase
                 const { error: insertError } = await supabase
                     .from('tagesschau_summaries')
@@ -178,7 +191,8 @@ Antworte bitte EXAKT in diesem Format:
                         published_at: itemDate,
                         summary,
                         transcript,
-                        url: webUrl
+                        url: webUrl,
+                        program: programId
                     });
 
                 if (insertError) throw insertError;
