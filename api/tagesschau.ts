@@ -64,116 +64,108 @@ export default async function handler(req: any, res: any) {
             debugLogs.push(`Channel ${i}: "${c.title}" (sophoraId: ${c.sophoraId})`);
         });
 
-        // Find first non-livestream video (has direct h264 streams)
-        const videoItem = channels.find((c: any) =>
+        // Find items with video streams
+        const videoItems = channels.filter((c: any) =>
             c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl)
         );
 
-        if (!videoItem) {
+        if (videoItems.length === 0) {
             return res.status(200).json({
-                message: 'VERSION 3.1 - No non-livestream video found.',
+                message: 'VERSION 3.2 - No video items found.',
                 debugLogs
             });
         }
 
-        const itemId = videoItem.sophoraId || videoItem.externalId;
-        const itemTitle = videoItem.title || 'Tagesschau';
-        const itemUrl = videoItem.streams.h264s || videoItem.streams.h264m || videoItem.streams.h264xl;
-        const itemDate = videoItem.date || new Date().toISOString();
+        debugLogs.push(`Found ${videoItems.length} potential video items. Processing up to 5 newest.`);
 
-        debugLogs.push(`Selected: "${itemTitle}" (${itemId})`);
+        const processedItems: any[] = [];
+        const limit = 5;
+        const itemsToProcess = videoItems.slice(0, limit);
 
-        // Check duplicates
-        console.log('[Supabase] Checking for duplicate video_id:', itemId);
-        const { data: existingData, error: existingError } = await supabase
-            .from('tagesschau_summaries')
-            .select('id')
-            .eq('video_id', itemId)
-            .maybeSingle();
-        console.log('[Supabase] Duplicate check result:', existingData, '| error:', existingError);
+        for (const videoItem of itemsToProcess) {
+            const itemId = videoItem.sophoraId || videoItem.externalId;
+            const itemTitle = videoItem.title || 'Tagesschau';
+            const itemUrl = videoItem.streams.h264s || videoItem.streams.h264m || videoItem.streams.h264xl;
+            const itemDate = videoItem.date || new Date().toISOString();
 
-        if (existingError) {
-            debugLogs.push(`Supabase duplicate-check error: ${existingError.message}`);
-            console.error('[Supabase] Duplicate check error:', existingError);
-        }
+            debugLogs.push(`--- Processing: "${itemTitle}" (${itemId}) ---`);
 
-        if (existingData) {
-            return res.status(200).json({
-                message: 'VERSION 3.1 - Already processed.',
-                debugLogs
-            });
-        }
-
-        // Download video  
-        debugLogs.push(`Downloading video...`);
-        const tmpPath = await downloadMedia(itemUrl, itemId);
-        const fileSizeBytes = fs.statSync(tmpPath).size;
-        const fileSizeMB = (fileSizeBytes / 1024 / 1024).toFixed(1);
-        debugLogs.push(`Downloaded: ${fileSizeMB} MB`);
-
-        try {
-            // Encode as base64 for inline sending
-            debugLogs.push(`Encoding as base64...`);
-            const base64Video = fs.readFileSync(tmpPath, { encoding: 'base64' });
-
-            // Call Gemini REST API directly (no SDK issues)
-            const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/${preferredModel}:generateContent?key=${apiKey}`;
-            debugLogs.push(`Calling Gemini at: ${preferredModel}:generateContent`);
-
-            const geminiRes = await fetch(modelEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { inline_data: { mime_type: 'video/mp4', data: base64Video } },
-                            { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch. Nutze Markdown-Formatierung für die Darstellung (z.B. Fettschrift für wichtige Begriffe, Aufzählungszeichen).` }
-                        ]
-                    }]
-                })
-            });
-
-            if (!geminiRes.ok) {
-                const errBody = await geminiRes.text();
-                throw new Error(`Gemini API error ${geminiRes.status}: ${errBody}`);
-            }
-
-            const geminiData = await geminiRes.json();
-            const summary = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-            debugLogs.push(`Summary generated (${summary.length} chars).`);
-
-            if (!summary) throw new Error('Gemini returned empty summary');
-
-            // Save to Supabase
-            console.log('[Supabase] Inserting record for video_id:', itemId);
-            const { data: insertData, error: insertError } = await supabase
+            // Check duplicates
+            const { data: existingData, error: existingError } = await supabase
                 .from('tagesschau_summaries')
-                .insert({
-                    video_id: itemId,
-                    title: itemTitle,
-                    source: 'tagesschau_api',
-                    published_at: itemDate,
-                    summary,
-                })
-                .select();
-            console.log('[Supabase] Insert result:', insertData, '| error:', insertError);
+                .select('id')
+                .eq('video_id', itemId)
+                .maybeSingle();
 
-            if (insertError) {
-                debugLogs.push(`Supabase insert error: ${insertError.message} | code: ${insertError.code}`);
-                throw insertError;
+            if (existingData) {
+                debugLogs.push(`Skipping: Already processed.`);
+                continue;
             }
-            debugLogs.push(`Saved to Supabase!`);
 
-            return res.status(200).json({
-                message: 'VERSION 3.1 - Success!',
-                videoId: itemId,
-                title: itemTitle,
-                debugLogs
-            });
+            // Download video
+            let currentTmpPath = '';
+            try {
+                currentTmpPath = await downloadMedia(itemUrl, itemId);
+                const fileSizeBytes = fs.statSync(currentTmpPath).size;
+                debugLogs.push(`Downloaded: ${(fileSizeBytes / 1024 / 1024).toFixed(1)} MB`);
 
-        } finally {
-            if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+                // Encode as base64
+                const base64Video = fs.readFileSync(currentTmpPath, { encoding: 'base64' });
+
+                // Call Gemini
+                const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/${preferredModel}:generateContent?key=${apiKey}`;
+                const geminiRes = await fetch(modelEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { inline_data: { mime_type: 'video/mp4', data: base64Video } },
+                                { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch. Nutze Markdown-Formatierung für die Darstellung (z.B. Fettschrift für wichtige Begriffe, Aufzählungszeichen).` }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!geminiRes.ok) {
+                    const errBody = await geminiRes.text();
+                    throw new Error(`Gemini API error ${geminiRes.status}: ${errBody}`);
+                }
+
+                const geminiData = await geminiRes.json();
+                const summary = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+                
+                if (!summary) throw new Error('Gemini returned empty summary');
+                debugLogs.push(`Summary generated (${summary.length} chars).`);
+
+                // Save to Supabase
+                const { error: insertError } = await supabase
+                    .from('tagesschau_summaries')
+                    .insert({
+                        video_id: itemId,
+                        title: itemTitle,
+                        source: 'tagesschau_api',
+                        published_at: itemDate,
+                        summary,
+                    });
+
+                if (insertError) throw insertError;
+                debugLogs.push(`Saved to Supabase!`);
+                processedItems.push({ id: itemId, title: itemTitle });
+
+            } catch (itemError: any) {
+                debugLogs.push(`Error processing item ${itemId}: ${itemError.message}`);
+                console.error(`Item Error (${itemId}):`, itemError);
+            } finally {
+                if (currentTmpPath && fs.existsSync(currentTmpPath)) fs.unlinkSync(currentTmpPath);
+            }
         }
+
+        return res.status(200).json({
+            message: `VERSION 3.2 - Processed ${processedItems.length} new items.`,
+            processedItems,
+            debugLogs
+        });
 
     } catch (error: any) {
         debugLogs.push(`FATAL ERROR: ${error.message}`);
