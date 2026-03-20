@@ -49,6 +49,12 @@ body {
     align-items: baseline;
     gap: 0.6rem;
     flex-wrap: wrap;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+    opacity: 0.8;
 }
 
 .logo-ts {
@@ -286,6 +292,46 @@ body {
     border-radius: 0 4px 4px 0;
 }
 
+/* ── Back to Top ── */
+.back-to-top {
+    position: fixed;
+    right: 2rem;
+    bottom: 2rem;
+    background: var(--ts-red);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 99;
+}
+
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.back-to-top:hover {
+    background: #a00018;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.back-to-top svg {
+    width: 24px;
+    height: 24px;
+}
+
 /* ── Footer ── */
 .site-footer {
     background: var(--ts-dark);
@@ -310,4 +356,14 @@ body {
     .page-intro h1 { font-size: 1.3rem; }
     .article-title { font-size: 1rem; }
     .article-summary { font-size: 0.88rem; }
+    
+    .back-to-top {
+        right: 50%;
+        transform: translateX(50%) translateY(10px);
+        bottom: 1.5rem;
+    }
+
+    .back-to-top.visible {
+        transform: translateX(50%) translateY(0);
+    }
 }

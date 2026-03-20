@@ -139,3 +139,30 @@ if (reloadBtn) {
         location.reload();
     });
 }
+
+// Back to top functionality
+const backToTopBtn = document.getElementById('back-to-top');
+const logoTop = document.getElementById('logo-top');
+
+const scrollToTop = () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+};
+
+if (backToTopBtn) {
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            backToTopBtn.classList.add('visible');
+        } else {
+            backToTopBtn.classList.remove('visible');
+        }
+    });
+
+    backToTopBtn.addEventListener('click', scrollToTop);
+}
+
+if (logoTop) {
+    logoTop.addEventListener('click', scrollToTop);
+}
