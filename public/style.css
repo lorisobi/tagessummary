@@ -40,6 +40,7 @@ body {
     padding: 0.75rem 1rem;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
 }
 
@@ -65,6 +66,31 @@ body {
     letter-spacing: 0.8px;
     border-left: 1px solid rgba(255,255,255,0.2);
     padding-left: 0.6rem;
+}
+
+.reload-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.reload-btn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.4);
+}
+
+.reload-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
 /* ── Main content ── */
@@ -97,17 +123,27 @@ body {
 .article-list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 1.5rem;
+    padding-top: 0.5rem;
 }
 
 .article-card {
     background: #fff;
-    border-bottom: 1px solid var(--ts-border);
+    border: 1px solid var(--ts-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     padding: 2.5rem 1.5rem;
     margin: 0 auto;
     max-width: 720px;
     width: 100%;
     animation: fadeIn 0.3s ease both;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.article-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 
 .article-card:first-child {
@@ -239,7 +275,17 @@ body {
     color: rgba(255,255,255,0.4);
     font-size: 0.78rem;
     text-align: center;
-    padding: 1rem;
+    padding: 1.5rem 1rem;
+}
+
+.site-footer a {
+    color: #fff;
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.site-footer a:hover {
+    opacity: 1;
 }
 
 /* ── Responsive ── */

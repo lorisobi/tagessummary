@@ -101,3 +101,14 @@ async function loadVideos() {
 }
 
 loadVideos();
+
+// Reload button functionality
+const reloadBtn = document.getElementById('reload-btn');
+if (reloadBtn) {
+    reloadBtn.addEventListener('click', () => {
+        // Simple visual feedback
+        reloadBtn.style.opacity = '0.5';
+        reloadBtn.disabled = true;
+        location.reload();
+    });
+}
