@@ -1,3 +1,7 @@
+const listEl = document.getElementById('article-list');
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('error-msg');
+
 let allVideos = [];
 
 async function loadVideos() {
