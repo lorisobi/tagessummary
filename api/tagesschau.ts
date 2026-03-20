@@ -64,19 +64,31 @@ export default async function handler(req: any, res: any) {
             debugLogs.push(`Channel ${i}: "${c.title}" (sophoraId: ${c.sophoraId})`);
         });
 
-        // Find items with video streams
-        const videoItems = channels.filter((c: any) =>
-            c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl)
+        // Find items with video streams, excluding livestreams
+        const rawVideoItems = channels.filter((c: any) =>
+            c.streams && (c.streams.h264s || c.streams.h264m || c.streams.h264xl) &&
+            !(c.title || '').toLowerCase().includes('livestream')
         );
+
+        // Deduplicate by video URL within this run
+        const videoItems: any[] = [];
+        const seenUrls = new Set<string>();
+        for (const item of rawVideoItems) {
+            const url = item.streams.h264s || item.streams.h264m || item.streams.h264xl;
+            if (!seenUrls.has(url)) {
+                seenUrls.add(url);
+                videoItems.push(item);
+            }
+        }
 
         if (videoItems.length === 0) {
             return res.status(200).json({
-                message: 'VERSION 3.2 - No video items found.',
+                message: 'VERSION 3.3 - No new video items found.',
                 debugLogs
             });
         }
 
-        debugLogs.push(`Found ${videoItems.length} potential video items. Processing up to 5 newest.`);
+        debugLogs.push(`Found ${videoItems.length} unique video items. Processing up to 5.`);
 
         const processedItems: any[] = [];
         const limit = 5;
