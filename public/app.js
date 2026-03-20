@@ -33,15 +33,42 @@ async function loadVideos() {
                 ? `Heute, ${timeStr} Uhr`
                 : date.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
 
-            // Parse markdown-style bullets into HTML list
-            const lines = (video.summary || '').split('\n').filter(l => l.trim());
-            const listItems = lines
-                .filter(l => l.trim().startsWith('-') || l.trim().startsWith('•') || l.trim().startsWith('*'))
-                .map(l => `<li>${l.replace(/^[-•*]\s*/, '').trim()}</li>`);
+            // Robust Markdown-to-HTML algorithm for basic summary formatting
+            const parseMarkdown = (text) => {
+                let html = text || '';
+                
+                // 1. Handle bold (**text**)
+                html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // 2. Handle lists (lines starting with -, *, •)
+                const lines = html.split('\n');
+                let inList = false;
+                const processedLines = [];
+                
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    const isBullet = trimmed.match(/^[-*•]\s+/);
+                    
+                    if (isBullet) {
+                        if (!inList) {
+                            processedLines.push('<ul>');
+                            inList = true;
+                        }
+                        processedLines.push(`<li>${trimmed.replace(/^[-*•]\s+/, '')}</li>`);
+                    } else {
+                        if (inList) {
+                            processedLines.push('</ul>');
+                            inList = false;
+                        }
+                        if (trimmed) processedLines.push(`<p>${trimmed}</p>`);
+                    }
+                });
+                
+                if (inList) processedLines.push('</ul>');
+                return processedLines.join('\n');
+            };
 
-            const summaryHtml = listItems.length
-                ? `<ul>${listItems.join('')}</ul>`
-                : `<p>${(video.summary || '').replace(/\*\*/g, '').trim()}</p>`;
+            const summaryHtml = parseMarkdown(video.summary);
 
             const sourceLabel = video.source === 'tagesschau_api' ? '100 Sek' : 'YouTube';
 

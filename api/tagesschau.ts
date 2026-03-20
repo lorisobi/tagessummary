@@ -127,7 +127,7 @@ export default async function handler(req: any, res: any) {
                     contents: [{
                         parts: [
                             { inline_data: { mime_type: 'video/mp4', data: base64Video } },
-                            { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch.` }
+                            { text: `Fasse diesen Nachrichtenbeitrag ("${itemTitle}") prägnant zusammen. Erstelle eine strukturierte Liste mit den wichtigsten Punkten auf Deutsch. Nutze Markdown-Formatierung für die Darstellung (z.B. Fettschrift für wichtige Begriffe, Aufzählungszeichen).` }
                         ]
                     }]
                 })
