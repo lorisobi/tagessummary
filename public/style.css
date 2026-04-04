@@ -32,10 +32,12 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
+    width: 100%;
 }
 
 .header-inner {
     max-width: var(--max-width);
+    width: 100%;
     margin: 0 auto;
     padding: 0.75rem 1rem;
     display: flex;
@@ -103,6 +105,8 @@ body {
 /* ── Main content ── */
 .container {
     max-width: var(--max-width);
+    width: 100%;
+    min-width: 0;
     margin: 0 auto;
     padding: 1.5rem 1rem;
     flex: 1;
@@ -385,6 +389,7 @@ body {
     font-size: 0.78rem;
     text-align: center;
     padding: 1.5rem 1rem;
+    width: 100%;
 }
 
 .site-footer a {
@@ -406,6 +411,8 @@ body {
     overflow-x: auto;
     padding: 0.2rem;
     scrollbar-width: none;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
 .filter-bar::-webkit-scrollbar {
