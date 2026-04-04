@@ -87,6 +87,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     transition: all 0.2s ease;
+    z-index: 100;
 }
 
 .reload-btn:hover {
@@ -145,6 +146,7 @@ body {
     animation: fadeIn 0.3s ease both;
     overflow: hidden;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow-wrap: break-word;
 }
 
 .article-card:hover {
@@ -439,6 +441,41 @@ body {
     .page-intro h1 { font-size: 1.3rem; }
     .article-title { font-size: 1rem; }
     .article-summary { font-size: 0.88rem; }
+    
+    .article-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .reload-btn {
+        position: fixed;
+        right: 1.5rem;
+        bottom: 1.5rem;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--ts-red);
+        color: #fff;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .reload-btn:hover {
+        background: #a00018;
+    }
+
+    .reload-btn .btn-text {
+        display: none;
+    }
+
+    .reload-btn svg {
+        width: 24px;
+        height: 24px;
+        margin: 0;
+    }
     
     .back-to-top {
         right: 50%;
