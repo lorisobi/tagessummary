@@ -35,13 +35,6 @@
             <p>Die neuesten Beiträge automatisch zusammengefasst · powered by Gemini</p>
         </div>
 
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Lade Beiträge...</p>
-        </div>
-
-        <div id="error-msg" class="error-msg" style="display:none"></div>
-        
         <nav class="filter-bar">
             <button class="filter-btn active" data-filter="all">Alle</button>
             <button class="filter-btn" data-filter="100s">100 Sek</button>
@@ -49,6 +42,13 @@
             <button class="filter-btn" data-filter="tt">Tagesthemen</button>
             <button class="filter-btn" data-filter="standard">Tagesschau</button>
         </nav>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Lade Beiträge...</p>
+        </div>
+
+        <div id="error-msg" class="error-msg" style="display:none"></div>
 
         <div id="article-list" class="article-list">
             <!-- Items injected by app.js -->
